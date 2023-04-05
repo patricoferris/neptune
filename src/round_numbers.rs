@@ -37,7 +37,7 @@ pub(crate) fn round_numbers_strengthened(arity: usize) -> (usize, usize) {
     let (full_round, partial_rounds) = round_numbers_base(arity);
 
     // Increase by 25%, rounding up.
-    let strengthened_partial_rounds = f64::ceil(partial_rounds as f64 * 1.25) as usize;
+    let strengthened_partial_rounds = ((5 * partial_rounds) / 4) as usize;
 
     (full_round, strengthened_partial_rounds)
 }
@@ -55,7 +55,7 @@ pub(crate) fn calc_round_numbers(t: usize, security_margin: bool) -> (usize, usi
             if round_numbers_are_secure(t, rf_test, rp_test) {
                 if security_margin {
                     rf_test += 2;
-                    rp_test = (1.075 * rp_test as f32).ceil() as usize;
+                    rp_test = ((43 * rp_test) / 40) as usize;
                 }
                 let n_sboxes = n_sboxes(t, rf_test, rp_test);
                 if n_sboxes < n_sboxes_min || (n_sboxes == n_sboxes_min && rf_test < rf) {
@@ -73,21 +73,22 @@ pub(crate) fn calc_round_numbers(t: usize, security_margin: bool) -> (usize, usi
 // Returns `true` if the provided round numbers satisfy the security inequalities specified in the
 // Poseidon paper.
 fn round_numbers_are_secure(t: usize, rf: usize, rp: usize) -> bool {
-    let (rp, t, n, m) = (rp as f32, t as f32, PRIME_BITLEN as f32, M as f32);
-    let rf_stat = if m <= (n - 3.0) * (t + 1.0) {
-        6.0
+    let (rp, t, n, m) = (rp, t, PRIME_BITLEN, M);
+    let rf_stat = if m <= (n - 3) * (t + 1) {
+        6
     } else {
-        10.0
+        10
     };
-    let rf_interp = 0.43 * m + t.log2() - rp;
-    let rf_grob_1 = 0.21 * n - rp;
-    let rf_grob_2 = (0.14 * n - 1.0 - rp) / (t - 1.0);
-    let rf_max = [rf_stat, rf_interp, rf_grob_1, rf_grob_2]
+    let rf_interp = ((43 * m) / 100) + (t.ilog2() as usize) - rp;
+    let rf_grob_1 = ((21 * n) / 100) - rp;
+    let rf_grob_2 = (((14 * n) / 100) - 1 - rp) / (t - 1);
+    let rsss = [rf_stat, rf_interp, rf_grob_1, rf_grob_2];
+    let rf_max = rsss
         .iter()
-        .map(|rf| rf.ceil() as usize)
+        .map(|rf| rf)
         .max()
         .unwrap();
-    rf >= rf_max
+    rf >= *rf_max
 }
 
 #[cfg(test)]
